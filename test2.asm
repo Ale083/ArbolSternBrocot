@@ -15,6 +15,7 @@ section .data
     msg_salida db "Saliendo del programa", 0
     msg_menoranueve_validacion_exitosa db "Es menor a 9",  0x0A, 0
     msg_mayoracero_validacion_exitosa db "Es mayor a 0", 0x0A, 0
+    msg_despues_ret db "Se retorno correctamente",0	
     newline db 0xA, 0
 
     ; Estructura del nodo del árbol
@@ -25,7 +26,7 @@ section .data
     heap_pointer dq heap_space       ; Puntero del siguiente bloque libre en el heap
 
 section .bss
-    nivel_max resb 4                ; Nivel máximo ingresado por el usuario
+    nivel_max resq 1              ; Nivel máximo ingresado por el usuario
     numerador_buscar resb 4         ; Numerador del racional a buscar
     denominador_buscar resb 4       ; Denominador del racional a buscar
     nivel_actual resb 4              ; Nivel actual para la búsqueda
@@ -36,6 +37,7 @@ section .text
 _start:
     ; Llamar a la función para pedir el nivel máximo
     call pedir_nivel_maximo
+
 
     ; Mensaje de depuración para indicar que el árbol va a empezar
     mov rax, 1
@@ -48,6 +50,14 @@ _start:
     mov rsi, 0                       ; Inicializar nivel actual
     call crear_arbol                 ; Llamar a la función para construir el árbol
 
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg_despues_ret
+    mov rdx, 24
+    syscall
+
+    jmp terminar
+
     ; Mensaje de depuración para indicar que el árbol fue construido
     ;mov rax, 1
     ;mov rdi, 1
@@ -56,16 +66,16 @@ _start:
     ;syscall
 
     ; Solicitar el número racional a buscar
-    call pedir_racional
+    ;call pedir_racional
 
     ; Buscar la fracción
-    mov rdi, rax                     ; Pass pointer to the root of the tree
-    call buscar_fraccion
+    ;mov rdi, rax                     ; Pass pointer to the root of the tree
+    ;call buscar_fraccion
 
     ; Preguntar al usuario si desea terminar el programa
-    call preguntar_terminar
+    ;call preguntar_terminar
 
-salir:
+terminar:
 
     ;Mensaje de depuracion para indicar la salida del programa
     ;mov rax, 1
@@ -74,7 +84,7 @@ salir:
     ;mov rdx, 26
     ;syscall
 
-    ; Salir del programa
+    ; terminar del programa
     mov rax, 60                      ; syscall: exit
     xor rdi, rdi                     ; código de salida 0
     syscall
@@ -82,54 +92,54 @@ salir:
 ; Función para pedir el nivel máximo
 pedir_nivel_maximo:
     ; Imprimir mensaje para pedir el nivel máximo
-    mov rax, 1                       ; syscall: write
-    mov rdi, 1                       ; file descriptor: stdout
-    mov rsi, msg_nivel_max           ; mensaje para el usuario
-    mov rdx, 31                      ; longitud del mensaje
-    syscall
+    mov rax, 1                      ; syscall: write
+    mov rdi, 1                      ; file descriptor: stdout
+    mov rsi, msg_nivel_max          ; mensaje para el usuario
+    mov rdx, 31                     ; longitud del mensaje
+    syscall	;;;
 
     ; Leer el número
-    mov rax, 0                       ; syscall: read
-    mov rdi, 0                       ; file descriptor: stdin
-    mov rsi, nivel_max               ; dirección donde almacenar el nivel
-    mov rdx, 4                       ; longitud a leer
+    mov rax, 0                      ; syscall: read
+    mov rdi, 0                      ; file descriptor: stdin
+    mov rsi, nivel_max              ; dirección donde almacenar el nivel
+    mov rdx, 1                      ; longitud a leer
     syscall
 
-    ; Convertir carácter a número
-    movzx rax, byte [nivel_max]      ; Cargar el primer carácter leído
-    sub rax, '0'                     ; Convertir de carácter a número
 
-    ; Limpiar el buffer
-    mov byte [nivel_max + 1], 0      ; Asegurarse que no hay datos sobrantes
+    movzx eax, byte [nivel_max]     ; Cargar el byte como entero
+    sub eax, '0'                    ; Convertir de carácter a número
+    mov [nivel_max], eax            ; Almacenar de nuevo
 
-    ;Mensaje de depuracion para imprimir el nivel maximo leido
-    ;mov rax, 1
-    ;mov rdi, 1
-    ;mov rsi, msg_nivel_leido
-    ;mov rdx, 20
-    ;syscall
 
-    ; Validar que el nivel máximo sea entre 1 y 8
-    cmp rax, 1                       ; Comprobar que sea al menos 1
-    jl menor_a_uno                   ; Si es menor a 1, saltar a menor_a_uno
-    cmp rax, 8                       ; Comprobar que no sea mayor a 8
-    jg mayor_a_ocho                  ; Si es mayor a 8, saltar a mayor_a_ocho
+    ; Verificar que el nivel máximo sea válido
+    cmp dword [nivel_max], 1         ; Comprobar que sea al menos 1
+    jl terminar                         ; Si es menor a 1, terminar del programa
 
-    ; Almacenar el valor de vuelta
-    mov [nivel_max], rax             ; Almacenar el nivel como entero
-
-    ; Mensaje de depuracion para imprimir el nivel maximo ALMACENADO
-    ;mov rax, 1
-    ;mov rdi, 1
-    ;mov rsi, msg_nivel_almacenado
-    ;mov rdx, 30
-    ;syscall
-
-    ; Mensaje de validación exitosa
-    mov rax, 1                       ; syscall: write
-    mov rdi, 1                       ; file descriptor: stdout
+    mov rax, 1
+    mov rdi, 1
     mov rsi, msg_mayoracero_validacion_exitosa
-    mov rdx, 30
+    mov rdx, 13
+    syscall	;;;
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline
+    mov rdx, 1
+    syscall
+
+    cmp dword [nivel_max], 8         ; Comprobar que no sea mayor a 8
+    jg terminar                         ; Si es mayor a 8, terminar del programa
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg_menoranueve_validacion_exitosa
+    mov rdx, 13
+    syscall	
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline
+    mov rdx, 1
     syscall
 
     ret
@@ -141,7 +151,7 @@ menor_a_uno:
     mov rsi, msg_mayoracero_validacion_exitosa  ; Puedes cambiar esto por un mensaje diferente si lo deseas
     mov rdx, 30
     syscall
-    jmp salir                        ; Salir del programa
+    jmp terminar                        ; terminar del programa
 
 mayor_a_ocho:
     ; Mensaje para cuando el nivel es mayor a 8
@@ -150,75 +160,57 @@ mayor_a_ocho:
     mov rsi, msg_menoranueve_validacion_exitosa
     mov rdx, 30
     syscall
-    jmp salir                        ; Salir del programa
+    jmp terminar                        ; terminar del programa
 
 ; Función para crear un nuevo nodo
 crear_nodo:     
-    ; Reservar memoria para un nodo
-    mov rax, heap_pointer            ; Obtener el puntero actual del heap
-    mov rbx, rax                     ; Guardar la dirección actual del nodo
-    add rax, nodo_size               ; Avanzar el puntero para el siguiente nodo
-    mov [heap_pointer], rax          ; Actualiza el puntero del heap
-    ;Inicializar el nodo
-    xor rdi, rdi                     ; Inicializar puntero izquierdo
-    xor rsi, rsi                     ; Inicializar puntero derecho
-    mov [rbx + 16], rdi               ; Establecer hijo izquierdo a null
-    mov [rbx + 24], rsi               ; Establecer hijo derecho a null
-    ret
+    mov rax, nodo_size       ; Cargar el tamaño del nodo en un registro
+    add [heap_pointer], rax   ; Sumar el tamaño del nodo al puntero del heap
 
 
+    ; Almacenar el numerador y denominador en el nodo
+    mov [rdi], rax                    ; Guardar numerador
+    mov [rdi + 8], rbx                ; Guardar denominador
+
+    ; Inicializar los punteros a hijos (nulos por ahora)
+    mov qword [rdi + 16], 0           ; Puntero a hijo izquierdo
+    mov qword [rdi + 24], 0           ; Puntero a hijo derecho
+
+    ret                               ; Devolver puntero al nodo creado
+    
 ; Función para crear el árbol de Stern-Brocot
 crear_arbol:
-    ; Argumentos: rsi = nivel actual, rdx = nivel máximo
-    cmp rsi, [nivel_max]             ; Si hemos alcanzado el nivel máximo, retornar
-    jge .fin
+    ; Argumentos: rdi = nivel actual, rsi = puntero al nodo izquierdo, rdx = puntero al nodo derecho, rcx = nivel máximo
+    cmp rdi, rcx                     ; Si nivel actual >= nivel máximo, terminamos
+    jge .fin_crear_arbol
 
-    ;Mensaje de depuracion para revisar si se empiezan a crear los nodos
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, msg_nodo_comienza
-    mov rdx, 24
-    syscall
+    ; Calcular la fracción mediadora (num1 + num2) / (den1 + den2)
+    mov rax, [rsi]                   ; Cargar numerador del nodo izquierdo
+    add rax, [rdx]                   ; num1 + num2
+    mov rbx, [rsi + 8]               ; Cargar denominador del nodo izquierdo
+    add rbx, [rdx + 8]               ; den1 + den2
 
+    ; Crear un nuevo nodo con la fracción mediadora
+    call crear_nodo                  ; Crear el nodo mediador
+    mov rdi, rax                     ; El nodo mediador ahora está en rdi (su puntero)
 
-    ; Crear nodo hijo izquierdo (L)
-    call crear_nodo                  ; Crear un nuevo nodo en el heap para el hijo izquierdo
-    mov dword [rax], 0               ; Inicializar el numerador del hijo izquierdo (0)
-    mov dword [rax + 8], 1           ; Inicializar el denominador del hijo izquierdo (1)
-    mov [rdi + 16], rax               ; Guardar el puntero al hijo izquierdo
+    ; Llamada recursiva para crear el lado izquierdo
+    push rcx                         ; Guardar el nivel máximo
+    mov rcx, rdi                     ; Nodo mediador como límite derecho
+    add rdi, 1                       ; Incrementar nivel
+    call crear_arbol                 ; Llamada recursiva
+    pop rcx                          ; Restaurar nivel máximo
 
+    ; Llamada recursiva para crear el lado derecho
+    push rcx                         ; Guardar el nivel máximo
+    mov rcx, rdi                     ; Nodo mediador como límite izquierdo
+    add rdi, 1                       ; Incrementar nivel
+    call crear_arbol                 ; Llamada recursiva
+    pop rcx                          ; Restaurar nivel máximo
 
-    ; Llamada recursiva para construir el subárbol izquierdo
-    add rsi, 1                       ; Incrementar el nivel
-    mov rdi, [rdi + 16]              ; Actualizar el puntero al hijo izquierdo
-    call crear_arbol                 ; Llamada recursiva para el hijo izquierdo
+    ret
 
-    ; Mensaje de depuracion para saber cuando se esta regresando al nodo padre
-    ;mov rax, 1
-    ;mov rdi, 1
-    ;mov rsi, msg_regresar_padre
-    ;mov rdx, 50
-    ;syscall
-
-
-    ; Regresar al nodo padre
-    dec rsi                          ; Decrementar el nivel al volver al nodo padre
-
-
-    ; Crear nodo hijo derecho (R)
-   ; mov rdi, [rdi + 24]              ; Regresar al nodo padre
-    call crear_nodo                  ; Crear un nuevo nodo en el heap para el hijo derecho
-    mov dword [rax], 1               ; Inicializar el numerador del hijo derecho (1)
-    mov dword [rax + 8], 0           ; Inicializar el denominador del hijo derecho (0)
-    mov [rdi + 24], rax               ; Guardar el puntero al hijo derecho
-
-    ; Llamada recursiva para construir el subárbol derecho
-    add rsi, 1                       ; Incrementar el nivel
-    mov rdi, [rdi + 24]              ; Actualizar el puntero al hijo derecho
-    
-    call crear_arbol                 ; Llamada recursiva para el hijo derecho
-
-.fin:
+.fin_crear_arbol:
     ret
 
 ; Función para pedir un número racional a buscar
@@ -336,7 +328,6 @@ preguntar_terminar:
     syscall
 
     cmp byte [nivel_max], '1'        ; Si la entrada es '1', terminar
-    je salir                       ; Llamar a la función de terminar el programa
+    je terminar                       ; Llamar a la función de terminar el programa
 
     jmp preguntar_terminar           ; Repetir la pregunta
-
