@@ -10,6 +10,8 @@ WORKDIR /usr/src/app
 # Copia los archivos de tu proyecto al contenedor
 COPY . .
 
-# Comando por defecto para ejecutar
-CMD nasm -f elf64 test2.asm -o test2.o && ld test2.o -o test2 && gdb ./test2
+# Copia el script de ejecución
+COPY run.sh .
 
+# Comando por defecto para ejecutar el script
+CMD ["./run.sh"]

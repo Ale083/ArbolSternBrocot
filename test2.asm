@@ -26,7 +26,7 @@ section .data
     heap_pointer dq heap_space       ; Puntero del siguiente bloque libre en el heap
 
 section .bss
-    nivel_max resq 1              ; Nivel máximo ingresado por el usuario
+    nivel_max resb 4              ; Nivel máximo ingresado por el usuario
     numerador_buscar resb 4         ; Numerador del racional a buscar
     denominador_buscar resb 4       ; Denominador del racional a buscar
     nivel_actual resb 4              ; Nivel actual para la búsqueda
@@ -166,23 +166,34 @@ mayor_a_ocho:
 crear_nodo:     
     mov rax, nodo_size       ; Cargar el tamaño del nodo en un registro
     add [heap_pointer], rax   ; Sumar el tamaño del nodo al puntero del heap
+    mov rax, [heap_pointer]           ; Obtener la dirección del nuevo nodo
 
 
     ; Almacenar el numerador y denominador en el nodo
-    mov [rdi], rax                    ; Guardar numerador
-    mov [rdi + 8], rbx                ; Guardar denominador
+    mov [rax], rbx                    ; Guardar numerador
+    mov [rax + 8], rdi                ; Guardar denominador
 
     ; Inicializar los punteros a hijos (nulos por ahora)
-    mov qword [rdi + 16], 0           ; Puntero a hijo izquierdo
-    mov qword [rdi + 24], 0           ; Puntero a hijo derecho
+    mov qword [rax + 16], 0           ; Puntero a hijo izquierdo
+    mov qword [rax + 24], 0           ; Puntero a hijo derecho
 
     ret                               ; Devolver puntero al nodo creado
     
 ; Función para crear el árbol de Stern-Brocot
 crear_arbol:
-    ; Argumentos: rdi = nivel actual, rsi = puntero al nodo izquierdo, rdx = puntero al nodo derecho, rcx = nivel máximo
-    cmp rdi, rcx                     ; Si nivel actual >= nivel máximo, terminamos
-    jge .fin_crear_arbol
+    ; Argumentos: rbx = nivel actual, rsi = puntero al nodo izquierdo, rdx = puntero al nodo derecho, rcx = nivel máximo
+
+        ; Verifica si los punteros son válidos
+    cmp rsi, 0
+    je .fin_crear_arbol
+    cmp rdx, 0
+    je .fin_crear_arbol
+
+
+    
+    movzx rax, byte [nivel_max]     ; Cargar nivel_max como entero extendido
+    cmp rbx, rax                    ; Comparar con rbx
+    jge .fin_crear_arbol            ; Si nivel actual >= nivel máximo, terminamos
 
     ; Calcular la fracción mediadora (num1 + num2) / (den1 + den2)
     mov rax, [rsi]                   ; Cargar numerador del nodo izquierdo
@@ -195,18 +206,23 @@ crear_arbol:
     mov rdi, rax                     ; El nodo mediador ahora está en rdi (su puntero)
 
     ; Llamada recursiva para crear el lado izquierdo
-    push rcx                         ; Guardar el nivel máximo
-    mov rcx, rdi                     ; Nodo mediador como límite derecho
-    add rdi, 1                       ; Incrementar nivel
-    call crear_arbol                 ; Llamada recursiva
-    pop rcx                          ; Restaurar nivel máximo
+    push rbx                           ; Guardar el nivel actual
+    push rsi                           ; Guardar el puntero izquierdo
+    mov rsi, rdi                       ; Nodo mediador como límite derecho
+    inc rbx                            ; Incrementar nivel
+    call crear_arbol                   ; Llamada recursiva
+    pop rsi                            ; Restaurar puntero izquierdo
+    pop rbx                            ; Restaurar nivel actual
+
 
     ; Llamada recursiva para crear el lado derecho
-    push rcx                         ; Guardar el nivel máximo
-    mov rcx, rdi                     ; Nodo mediador como límite izquierdo
-    add rdi, 1                       ; Incrementar nivel
-    call crear_arbol                 ; Llamada recursiva
-    pop rcx                          ; Restaurar nivel máximo
+    push rbx                           ; Guardar el nivel actual
+    push rdx                           ; Guardar el puntero derecho
+    mov rdx, rdi                       ; Nodo mediador como límite izquierdo
+    inc rbx                            ; Incrementar nivel
+    call crear_arbol                   ; Llamada recursiva
+    pop rdx                            ; Restaurar puntero derecho
+    pop rbx                            ; Restaurar nivel actual
 
     ret
 
