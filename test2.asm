@@ -16,6 +16,8 @@ section .data
     msg_menoranueve_validacion_exitosa db "Es menor a 9",  0x0A, 0
     msg_mayoracero_validacion_exitosa db "Es mayor a 0", 0x0A, 0
     msg_despues_ret db "Se retorno correctamente",0	
+    msg_numerador db "Numerador actual: ", 0
+    msg_denominador db "Denominador actual: ", 0
     newline db 0xA, 0
 
     ; Estructura del nodo del árbol
@@ -30,6 +32,9 @@ section .bss
     numerador_buscar resb 4         ; Numerador del racional a buscar
     denominador_buscar resb 4       ; Denominador del racional a buscar
     nivel_actual resb 4              ; Nivel actual para la búsqueda
+    nodo_izq resq 1        ; Espacio para el puntero del nodo izquierdo
+    nodo_der resq 1        ; Espacio para el puntero del nodo derecho
+    buffer resb 21                   ; Buffer to store the number string (up to 20 digits + null terminator)
 
 section .text
     global _start
@@ -37,6 +42,15 @@ section .text
 _start:
     ; Llamar a la función para pedir el nivel máximo
     call pedir_nivel_maximo
+
+        ; Llamar a procedimiento para inicializar nodos
+    call inicializar_nodos
+
+    ; Establecer el stack frame para la llamada a crear_arbol
+    push 0                  ; Nivel inicial es 0
+    mov rsi, [nodo_izq]      ; Cargar el nodo izquierdo inicial
+    mov rdx, [nodo_der]      ; Cargar el nodo derecho inicial
+    mov rcx, [nivel_max]     ; Cargar el nivel máximo desde la memoria
 
 
     ; Mensaje de depuración para indicar que el árbol va a empezar
@@ -88,6 +102,24 @@ terminar:
     mov rax, 60                      ; syscall: exit
     xor rdi, rdi                     ; código de salida 0
     syscall
+
+inicializar_nodos:
+    ; Crear el nodo izquierdo (0/1)
+    push rbp
+    mov rbp, rsp
+    mov rbx, 0               ; Numerador del nodo izquierdo
+    mov rdi, 1               ; Denominador del nodo izquierdo
+    call crear_nodo          ; Crear nodo izquierdo
+    mov [nodo_izq], rax      ; Guardar el puntero al nodo izquierdo en la variable
+
+    ; Crear el nodo derecho (1/0)
+    mov rbx, 1               ; Numerador del nodo derecho
+    mov rdi, 0               ; Denominador del nodo derecho
+    call crear_nodo          ; Crear nodo derecho
+    mov [nodo_der], rax      ; Guardar el puntero al nodo derecho en la variable
+
+    pop rbp
+    ret
 
 ; Función para pedir el nivel máximo
 pedir_nivel_maximo:
@@ -173,6 +205,28 @@ crear_nodo:
     mov [rax], rbx                    ; Guardar numerador
     mov [rax + 8], rdi                ; Guardar denominador
 
+        ; Convertir e imprimir numerador
+    mov rax, rbx                     ; Numerador en rax
+    mov rdi, buffer                  ; Puntero al buffer de salida
+    mov rsi, buffer + 20             ; Fin del buffer
+    call convert_integer_to_string
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, buffer                  ; Dirección del buffer donde está el número
+    mov rdx, 20                      ; Longitud máxima del número
+    syscall
+
+    ; Convertir e imprimir denominador
+    mov rax, rdi                     ; Denominador en rax
+    mov rdi, buffer                  ; Puntero al buffer de salida
+    mov rsi, buffer + 20             ; Fin del buffer
+    call convert_integer_to_string
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, buffer                  ; Dirección del buffer donde está el número
+    mov rdx, 20                      ; Longitud máxima del número
+    syscall
+
     ; Inicializar los punteros a hijos (nulos por ahora)
     mov qword [rax + 16], 0           ; Puntero a hijo izquierdo
     mov qword [rax + 24], 0           ; Puntero a hijo derecho
@@ -183,16 +237,16 @@ crear_nodo:
 crear_arbol:
     ; Argumentos: rbx = nivel actual, rsi = puntero al nodo izquierdo, rdx = puntero al nodo derecho, rcx = nivel máximo
 
-        ; Verifica si los punteros son válidos
+    ; Verifica si los punteros son válidos
     cmp rsi, 0
     je .fin_crear_arbol
     cmp rdx, 0
     je .fin_crear_arbol
 
 
-    
-    movzx rax, byte [nivel_max]     ; Cargar nivel_max como entero extendido
-    cmp rbx, rax                    ; Comparar con rbx
+    ; Compara el nivel actual con el nivel máximo
+    movzx rax, byte [nivel_max]  ; Cargar nivel_max como entero extendido   
+    cmp rbx, rcx                    ; Comparar con rbx
     jge .fin_crear_arbol            ; Si nivel actual >= nivel máximo, terminamos
 
     ; Calcular la fracción mediadora (num1 + num2) / (den1 + den2)
@@ -347,3 +401,33 @@ preguntar_terminar:
     je terminar                       ; Llamar a la función de terminar el programa
 
     jmp preguntar_terminar           ; Repetir la pregunta
+
+
+convert_integer_to_string:
+    ; rax = integer to convert
+    ; rdi = buffer to store the string (assumed to be large enough)
+    ; rsi = pointer to end of buffer (for reverse storage)
+    
+    push rbx                ; Save registers
+    push rcx
+    push rdx
+
+    mov rbx, 10             ; Base 10 divisor
+    mov rcx, 0              ; Digit counter
+
+.convert_loop:
+    xor rdx, rdx            ; Clear rdx before division
+    div rbx                 ; Divide rax by 10 (rax = quotient, rdx = remainder)
+    add dl, '0'             ; Convert remainder to ASCII ('0' = 0x30)
+    dec rsi                 ; Move backward in the buffer
+    mov [rsi], dl           ; Store the ASCII character
+    inc rcx                 ; Increment digit counter
+    test rax, rax           ; Check if quotient is zero
+    jnz .convert_loop       ; If not zero, continue loop
+
+    mov rax, rcx            ; Return the digit count in rax
+
+    pop rdx                 ; Restore registers
+    pop rcx
+    pop rbx
+    ret
