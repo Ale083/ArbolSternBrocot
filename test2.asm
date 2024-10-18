@@ -34,7 +34,6 @@ section .bss
     nivel_actual resb 4              ; Nivel actual para la búsqueda
     nodo_izq resq 1        ; Espacio para el puntero del nodo izquierdo
     nodo_der resq 1        ; Espacio para el puntero del nodo derecho
-    buffer resb 21                   ; Buffer to store the number string (up to 20 digits + null terminator)
 
 section .text
     global _start
@@ -205,31 +204,34 @@ crear_nodo:
     mov [rax], rbx                    ; Guardar numerador
     mov [rax + 8], rdi                ; Guardar denominador
 
-        ; Convertir e imprimir numerador
-    mov rax, rbx                     ; Numerador en rax
-    mov rdi, buffer                  ; Puntero al buffer de salida
-    mov rsi, buffer + 20             ; Fin del buffer
-    call convert_integer_to_string
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, buffer                  ; Dirección del buffer donde está el número
-    mov rdx, 20                      ; Longitud máxima del número
-    syscall
-
-    ; Convertir e imprimir denominador
-    mov rax, rdi                     ; Denominador en rax
-    mov rdi, buffer                  ; Puntero al buffer de salida
-    mov rsi, buffer + 20             ; Fin del buffer
-    call convert_integer_to_string
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, buffer                  ; Dirección del buffer donde está el número
-    mov rdx, 20                      ; Longitud máxima del número
-    syscall
-
     ; Inicializar los punteros a hijos (nulos por ahora)
     mov qword [rax + 16], 0           ; Puntero a hijo izquierdo
     mov qword [rax + 24], 0           ; Puntero a hijo derecho
+
+    ; Imprimir numerador y denominador actuales
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg_numerador
+    mov rdx, 19
+    syscall
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, rbx
+    mov rdx, 4
+    syscall
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, msg_denominador
+    mov rdx, 21
+    syscall
+
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, rdi
+    mov rdx, 4
+    syscall
 
     ret                               ; Devolver puntero al nodo creado
     
@@ -401,33 +403,3 @@ preguntar_terminar:
     je terminar                       ; Llamar a la función de terminar el programa
 
     jmp preguntar_terminar           ; Repetir la pregunta
-
-
-convert_integer_to_string:
-    ; rax = integer to convert
-    ; rdi = buffer to store the string (assumed to be large enough)
-    ; rsi = pointer to end of buffer (for reverse storage)
-    
-    push rbx                ; Save registers
-    push rcx
-    push rdx
-
-    mov rbx, 10             ; Base 10 divisor
-    mov rcx, 0              ; Digit counter
-
-.convert_loop:
-    xor rdx, rdx            ; Clear rdx before division
-    div rbx                 ; Divide rax by 10 (rax = quotient, rdx = remainder)
-    add dl, '0'             ; Convert remainder to ASCII ('0' = 0x30)
-    dec rsi                 ; Move backward in the buffer
-    mov [rsi], dl           ; Store the ASCII character
-    inc rcx                 ; Increment digit counter
-    test rax, rax           ; Check if quotient is zero
-    jnz .convert_loop       ; If not zero, continue loop
-
-    mov rax, rcx            ; Return the digit count in rax
-
-    pop rdx                 ; Restore registers
-    pop rcx
-    pop rbx
-    ret
