@@ -72,8 +72,6 @@ _start:
     mov rdx, 25
     syscall
 
-    ; Aquí podrías continuar con la solicitud de números racionales y la búsqueda
-    ; Por simplicidad, terminaremos el programa aquí
     jmp terminar
 
 terminar:
