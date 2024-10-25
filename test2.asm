@@ -21,6 +21,7 @@ section .data
     msg_denominador db "Denominador actual: ", 0
     newline db 0xA, 0
 
+
     ; Definición de la estructura del nodo
     ; Offset 0: Numerador (8 bytes)
     ; Offset 8: Denominador (8 bytes)
@@ -241,8 +242,8 @@ crear_arbol:
     mov rdi, rax                       ; Nodo mediador ahora está en rax
 
     ; Actualizar el árbol: Asignar el hijo izquierdo y derecho
-    ; Para simplificar, asumiremos que el nodo padre tiene espacio para hijos
-    ; Aquí deberías pasar el puntero del padre para asignar los hijos
+    ; Asumimos que el nodo padre tiene espacio para hijos
+    ; Aquí tengo que pasar el puntero del padre para asignar los hijos
 
     ; Llamada recursiva para crear el hijo izquierdo
     mov rsi, rax                       ; Nuevo límite derecho
